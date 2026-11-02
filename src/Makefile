@@ -61,6 +61,8 @@
 #------------------------------------------------------------------------------------------------
 # Define target platform
 PLATFORM             ?= PLATFORM_PSL1GHT
+
+
 ifeq ($(PLATFORM), PLATFORM_DESKTOP)
     TARGET_PLATFORM   = PLATFORM_DESKTOP_GLFW
 else
@@ -232,10 +234,13 @@ ifeq ($(TARGET_PLATFORM),PLATFORM_ANDROID)
 endif
 ifeq ($(TARGET_PLATFORM),PLATFORM_PSL1GHT)
     PLATFORM_SHELL = sh
-    ifeq ($(strip $(PSL1GHT)),)
-        $(error "Please set PSL1GHT in your environment. export PSL1GHT=<path>")
-    endif
-    include $(PSL1GHT)/ppu_rules
+    #ifeq ($(strip $(PSL1GHT)),)
+    #    $(error "Please set PSL1GHT in your environment. export PSL1GHT=<path>")
+    #endif
+    include /usr/local/ps3dev/ppu_rules
+	PORTLIBS ?= $(PSL1GHT)/portlibs/ppu
+    PSL1GHT_INSTALL_PATH ?= $(PORTLIBS)/lib
+    PSL1GHT_H_INSTALL_PATH ?= $(PORTLIBS)/include
 endif
 
 # Define raylib graphics api depending on selected platform
@@ -809,37 +814,35 @@ RAYLIB_INSTALL_PATH ?= $(DESTDIR)/lib
 # RAYLIB_H_INSTALL_PATH locates the installed raylib header and associated source files.
 RAYLIB_H_INSTALL_PATH ?= $(DESTDIR)/include
 
-install :
-ifeq ($(ROOT),root)
-    ifeq ($(PLATFORM_OS),LINUX)
-        # Attention! You are root, writing files to $(RAYLIB_INSTALL_PATH)
-        # and $(RAYLIB_H_INSTALL_PATH). Consult this Makefile for more information.
-        # Prepare the environment as needed.
-		mkdir --parents --verbose $(RAYLIB_INSTALL_PATH)
-		mkdir --parents --verbose $(RAYLIB_H_INSTALL_PATH)
-        ifeq ($(RAYLIB_LIBTYPE),SHARED)
-            # Installing raylib to $(RAYLIB_INSTALL_PATH).
-			cp --update --verbose $(RAYLIB_RELEASE_PATH)/libraylib.so.$(RAYLIB_VERSION) $(RAYLIB_INSTALL_PATH)/lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_VERSION)
-			cd $(RAYLIB_INSTALL_PATH); ln -fsv lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_VERSION) lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_API_VERSION)
-			cd $(RAYLIB_INSTALL_PATH); ln -fsv lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_API_VERSION) lib$(RAYLIB_LIB_NAME).so
-            # Uncomment to update the runtime linker cache with RAYLIB_INSTALL_PATH.
-            # Not necessary if later embedding RPATH in your executable. See examples/Makefile.
-			ldconfig $(RAYLIB_INSTALL_PATH)
-        else
-            # Installing raylib to $(RAYLIB_INSTALL_PATH).
-			cp --update --verbose $(RAYLIB_RELEASE_PATH)/lib$(RAYLIB_LIB_NAME).a $(RAYLIB_INSTALL_PATH)/lib$(RAYLIB_LIB_NAME).a
-        endif
-        # Copying raylib development files to $(RAYLIB_H_INSTALL_PATH).
-		cp --update raylib.h $(RAYLIB_H_INSTALL_PATH)/raylib.h
-		cp --update raymath.h $(RAYLIB_H_INSTALL_PATH)/raymath.h
-		cp --update rlgl.h $(RAYLIB_H_INSTALL_PATH)/rlgl.h
-		@echo "raylib development files installed/updated!"
-    else
-		@echo "This function currently works on GNU/Linux systems. Add yours today (^;"
-    endif
+install:
+ifeq ($(TARGET_PLATFORM),PLATFORM_PSL1GHT)
+	@echo "Installing raylib for PSL1GHT to $(PSL1GHT_INSTALL_PATH)..."
+	mkdir -p $(PSL1GHT_INSTALL_PATH)/lib $(PSL1GHT_H_INSTALL_PATH)
+	cp -v $(RAYLIB_RELEASE_PATH)/lib$(RAYLIB_LIB_NAME).a $(PSL1GHT_INSTALL_PATH)/lib/
+	cp -v raylib.h raymath.h rlgl.h $(PSL1GHT_H_INSTALL_PATH)/
+	@echo "raylib PSL1GHT development files installed!"
+else ifeq ($(PLATFORM_OS),LINUX)
+	# Attention! You are root, writing files to $(RAYLIB_INSTALL_PATH)
+	# and $(RAYLIB_H_INSTALL_PATH). Consult this Makefile for more information.
+	# Prepare the environment as needed.
+	mkdir --parents --verbose $(RAYLIB_INSTALL_PATH)
+	mkdir --parents --verbose $(RAYLIB_H_INSTALL_PATH)
+	ifeq ($(RAYLIB_LIBTYPE),SHARED)
+		cp --update --verbose $(RAYLIB_RELEASE_PATH)/libraylib.so.$(RAYLIB_VERSION) $(RAYLIB_INSTALL_PATH)/lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_VERSION)
+		cd $(RAYLIB_INSTALL_PATH); ln -fsv lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_VERSION) lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_API_VERSION)
+		cd $(RAYLIB_INSTALL_PATH); ln -fsv lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_API_VERSION) lib$(RAYLIB_LIB_NAME).so
+		ldconfig $(RAYLIB_INSTALL_PATH)
+	else
+		cp --update --verbose $(RAYLIB_RELEASE_PATH)/lib$(RAYLIB_LIB_NAME).a $(RAYLIB_INSTALL_PATH)/lib$(RAYLIB_LIB_NAME).a
+	endif
+	cp --update raylib.h $(RAYLIB_H_INSTALL_PATH)/raylib.h
+	cp --update raymath.h $(RAYLIB_H_INSTALL_PATH)/raymath.h
+	cp --update rlgl.h $(RAYLIB_H_INSTALL_PATH)/rlgl.h
+	@echo "raylib development files installed/updated!"
 else
-	@echo "Error: Root permissions needed for installation. Try sudo make install"
+	@echo "This function currently works on GNU/Linux and PSL1GHT systems."
 endif
+
 
 # Remove raylib dev files installed on the system
 # NOTE: see 'install' target.
